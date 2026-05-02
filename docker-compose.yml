@@ -1,0 +1,51 @@
+services:
+  auth:
+    build: ./services/auth
+    container_name: nebori_auth
+    environment:
+      DJANGO_SECRET_KEY: change-this-in-production
+      DJANGO_DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: "*"
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: nebori_auth
+      POSTGRES_USER: nebori
+      POSTGRES_PASSWORD: nebori
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8002:8000"
+
+  db:
+    image: postgres:16-alpine
+    container_name: nebori_auth_db
+    environment:
+      POSTGRES_DB: nebori_auth
+      POSTGRES_USER: nebori
+      POSTGRES_PASSWORD: nebori
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nebori -d nebori_auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  minio:
+    image: minio/minio:latest
+    container_name: nebori_minio
+    # Запускаємо сервер і вказуємо порт для адмінки (9001)
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000" # Головний порт для API (сюди буде стукати FastAPI)
+      - "9001:9001" # Порт для веб-адмінки (сюди будеш заходити ти через браузер)
+    environment:
+      MINIO_ROOT_USER: admin # Твій Access Key (Логін)
+      MINIO_ROOT_PASSWORD: password123 # Твій Secret Key (Пароль)
+    volumes:
+      - minio_data:/data # Зберігаємо дані на диску, щоб вони не зникли після рестарту
+
+volumes:
+  postgres_data:
+  minio_data: # Оголошуємо volume
