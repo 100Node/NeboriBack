@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     POSTGRES_HOST: str
     POSTGRES_PORT: int = 5432
 
+    S3_ENDPOINT_URL: str
+    S3_ACCESS_KEY: str 
+    S3_SECRET_KEY: str
+    S3_BUCKET_NAME: str
+
     ALLOWED_ORIGINS: List[str] = ["http://localhost:3000"]
 
     ENVIRONMENT: Environment = Environment.LOCAL
