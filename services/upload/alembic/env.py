@@ -9,8 +9,8 @@ from alembic import context
 # 1. Імпортуємо твої налаштування та метадані моделей
 # Переконайся, що шлях імпорту відповідає структурі твого проєкту
 from app.core.config import settings
-from db.base import Base
-import db.models  # Обов'язково імпортуємо, щоб Alembic бачив моделі
+from services.upload.app.db.base import Base
+import services.upload.app.db.models  # Обов'язково імпортуємо, щоб Alembic бачив моделі
 
 # Об'єкт конфігурації Alembic
 config = context.config
