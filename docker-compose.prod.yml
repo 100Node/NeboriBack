@@ -2,7 +2,7 @@ services:
   auth-service:
     build: ./auth-service
     env_file:
-      - .env.shared
+      - .env.root
       - .env.auth
     environment:
       - ENVIRONMENT=production
@@ -10,7 +10,7 @@ services:
   upload-service:
     build: ./upload-service
     env_file:
-      - .env.shared
+      - .env.root
       - .env.upload
 
 
@@ -19,7 +19,7 @@ services:
     container_name: nebori_minio
     command: server /data --console-address ":9001"
     env_file:
-      - .env.upload
+      - .env.root
     ports:
       - "9000:9000"  # Main port for API
       - "9001:9001"  # Admin port
