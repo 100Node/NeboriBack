@@ -17,6 +17,26 @@ services:
     ports:
       - "8002:8000"
 
+  user:
+    build: ./services/user
+    container_name: nebori_user
+    environment:
+      DJANGO_SECRET_KEY: change-this-in-production
+      DJANGO_DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: "*"
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: nebori_user
+      POSTGRES_USER: nebori
+      POSTGRES_PASSWORD: nebori
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8003:8000"
+    volumes:
+      - user_media:/app/media
+
   db:
     image: postgres:16-alpine
     container_name: nebori_auth_db
@@ -58,3 +78,4 @@ services:
 volumes:
   postgres_data:
   minio_data: # Оголошуємо volume
+  user_media:
