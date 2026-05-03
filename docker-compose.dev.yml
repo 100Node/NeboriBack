@@ -32,7 +32,25 @@ services:
       db:
         condition: service_healthy
     entrypoint: /app/scripts/entrypoint-dev.sh
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload 
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  transcoding:
+    build:
+      context: ./services/transcoding
+      dockerfile: Dockerfile.dev
+    container_name: nebori-transcoding-serv
+    env_file:
+      - .env.dev.root
+      - .env.dev.transcoding
+    ports:
+      - "8009:8000"  # Main port for API
+    volumes:
+      - ./services/upload:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: /app/scripts/entrypoint-dev.sh
+    command: faststream run app.main:app --reload 
 
   minio:
     image: minio/minio:latest
