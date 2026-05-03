@@ -57,22 +57,32 @@ class UserProfileViewSet(viewsets.ViewSet):
         serializer = UserProfileSerializer(profile, context={"request": request})
         return Response(serializer.data)
 
-    @action(detail=False, methods=["get", "put", "patch"])
-    def settings(self, request):
+    @action(detail=False, methods=["get", "put", "patch"], url_path="settings")
+    def user_settings(self, request):
         """Get or update user settings"""
+        # Ensure user has a profile
+        try:
+            profile = request.user.profile
+        except UserProfile.DoesNotExist:
+            profile = UserProfile.objects.create(user=request.user)
+        
         if request.method == "GET":
             serializer = UserSettingsSerializer(request.user, context={"request": request})
             return Response(serializer.data)
         
-        user = request.user
-        user.email = request.data.get("email", user.email)
-        user.first_name = request.data.get("first_name", user.first_name)
-        user.last_name = request.data.get("last_name", user.last_name)
-        user.save()
-        
-        serializer = UserSettingsSerializer(user, context={"request": request})
-        return Response(serializer.data)
-
+        try:
+            serializer = UserSettingsSerializer(
+                request.user, 
+                data=request.data, 
+                partial=True, 
+                context={"request": request}
+            )
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ChannelViewSet(viewsets.ModelViewSet):
     queryset = Channel.objects.all()
