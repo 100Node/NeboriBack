@@ -3,15 +3,12 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
 
 
 DATABASE_URL_ASYNC = settings.DATABASE_URL_ASYNC
-DATABASE_URL_SYNC = settings.DATABASE_URL_SYNC
 
 engine = create_async_engine(
     DATABASE_URL_ASYNC,
@@ -36,15 +33,3 @@ async def get_db():
         finally:
             await session.close()
 
-
-engine_sync = create_engine(
-    DATABASE_URL_SYNC,
-    echo=False,
-    pool_pre_ping=True,
-)
-
-SessionLocalSync = sessionmaker(
-    bind=engine_sync,
-    autocommit=False,
-    autoflush=False,
-)
