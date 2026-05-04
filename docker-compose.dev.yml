@@ -31,6 +31,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      rabbitmq:
+        condition: service_started
     entrypoint: /app/scripts/entrypoint-dev.sh
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
@@ -45,12 +47,28 @@ services:
     ports:
       - "8009:8000"  # Main port for API
     volumes:
-      - ./services/upload:/app
+      - ./services/transcoding:/app
     depends_on:
       db:
         condition: service_healthy
+      rabbitmq:
+        condition: service_started
     entrypoint: /app/scripts/entrypoint-dev.sh
-    command: faststream run app.main:app --reload 
+    command: faststream run app.main:app --reload
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: nebori-rabbitmq
+    env_file:
+      - .env.dev.root
+    ports:
+      - "${RABBITMQ_PORT}:5672"
+      - "${RABBITMQ_UI_PORT}:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
 
   minio:
     image: minio/minio:latest
@@ -68,3 +86,4 @@ services:
 volumes:
   minio_data:
   postgres_data:
+  rabbitmq_data:
