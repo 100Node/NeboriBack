@@ -1,0 +1,1 @@
+from app.modules.tasks import models as tasks_models # noqa
