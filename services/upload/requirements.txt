@@ -45,3 +45,4 @@ watchfiles==1.1.1
 websockets==16.0
 wrapt==1.17.3
 yarl==1.23.0
+faststream[rabbit,cli]==0.6.7
