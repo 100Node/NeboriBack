@@ -25,6 +25,7 @@ WORKDIR /app
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends postgresql-client \
+ && apt-get install -y ffmpeg \
  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=base /opt/venv /opt/venv
@@ -42,4 +43,4 @@ EXPOSE 8000
 
 ENTRYPOINT ["app/scripts/entrypoint.sh"]
 # no reload in prod
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["faststream", "run", "app.main:app", "--workers 2"]

@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     S3_ACCESS_KEY: str 
     S3_SECRET_KEY: str
     S3_BUCKET_NAME: str
+    S3_PROCESSED_BUCKET_NAME: str
+
+    RABBITMQ_USER: str
+    RABBITMQ_PASS: str
+    RABBITMQ_HOST: str
+    RABBITMQ_PORT: int = 5672
 
     ALLOWED_ORIGINS: List[str] = ["http://localhost:3000"]
 
@@ -35,15 +41,10 @@ class Settings(BaseSettings):
             f"{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
-
+    
     @property
-    def DATABASE_URL_SYNC(self) -> str:
-        # for Alembic migrations (sync engine)
-        return (
-            f"postgresql+psycopg2://"
-            f"{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
-            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
-        )
+    def RABBITMQ_URL(self) -> str:
+        return f"amqp://{self.RABBITMQ_USER}:{self.RABBITMQ_PASS}@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}/"
 
     @model_validator(mode='after')
     def set_debug_default(self):

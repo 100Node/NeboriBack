@@ -3,8 +3,8 @@ import uuid
 import logging
 from fastapi import UploadFile
 
-from app.modules.videos.repository import IVideoRepository
-from app.modules.videos.enums import VideoStatusEnum
+from app.modules.tasks.repository import IProcessingTaskRepository
+from app.modules.tasks.enums import TaskStatusEnum, TaskTypeEnum
 from app.services.storage import S3Service
 
 logger = logging.getLogger(__name__)
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class VideoUploadService:
     def __init__(
         self, 
-        repo: IVideoRepository, 
+        repo: IProcessingTaskRepository, 
         s3_service: S3Service,
         commit_func: Callable[[], Awaitable[None]], 
         rollback_func: Callable[[], Awaitable[None]]
@@ -39,7 +39,7 @@ class VideoUploadService:
                 "title": title,
                 "filename": filename,
                 "s3_path": s3_object_name,
-                "status": VideoStatusEnum.PENDING
+                "status": TaskStatusEnum.PENDING
             })
 
             # 2. S3 робить свою роботу
@@ -51,7 +51,7 @@ class VideoUploadService:
             )
             
             # 3. Репозиторій оновлює (flush)
-            await self.repo.update(upload_record, {"status": VideoStatusEnum.PROCESSING})
+            await self.repo.update(upload_record, {"status": TaskStatusEnum.PROCESSING})
             
             # 4. Сервіс викликає коміт
             await self.commit()
