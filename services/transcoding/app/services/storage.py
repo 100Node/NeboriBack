@@ -1,3 +1,4 @@
+import mimetypes
 import os
 import logging
 import aioboto3
@@ -59,3 +60,34 @@ class S3TranscodeService:
             except ClientError as e:
                 logger.error(f"S3 Upload error for {object_name}: {e}")
                 raise RuntimeError(f"Failed to upload {object_name} to S3.")
+            
+
+    async def upload_directory(self, local_dir: str, s3_prefix: str, bucket_name: str):
+        """Рекурсивно завантажує папку (HLS чанки) в S3"""
+        if not os.path.isdir(local_dir):
+            logger.error(f"Directory not found: {local_dir}")
+            return
+
+        for root, _, files in os.walk(local_dir):
+            for file in files:
+                local_path = os.path.join(root, file)
+                relative_path = os.path.relpath(local_path, local_dir)
+                s3_object_name = f"{s3_prefix}/{relative_path}"
+                
+                # Визначаємо тип файлу для браузерних плеєрів
+                content_type, _ = mimetypes.guess_type(local_path)
+                if not content_type:
+                    if local_path.endswith('.m3u8'):
+                        content_type = 'application/vnd.apple.mpegurl'
+                    elif local_path.endswith('.ts'):
+                        content_type = 'video/mp2t'
+                    else:
+                        content_type = 'application/octet-stream'
+
+                # Викликаємо існуючий метод цього ж класу
+                await self.upload_file(
+                    bucket_name=bucket_name,
+                    object_name=s3_object_name,
+                    local_file_path=local_path,
+                    content_type=content_type
+                )

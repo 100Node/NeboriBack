@@ -40,18 +40,53 @@ class FFmpegService:
         return output_path
 
     async def transcode_video(self, input_path: str, output_path: str, resolution: str = "1920x1080") -> str:
-        """Стискає відео до потрібної роздільної здатності"""
+        """Стискає відео до потрібної роздільної здатності (MP4)"""
         cmd = [
             "ffmpeg",
             "-y",
             "-i", input_path,
             "-vf", f"scale={resolution}", # Зміна розміру (напр., 1920x1080 або 1280x720)
-            "-c:v", "libx264",            # Відеокодек H.264 (найпопулярніший)
-            "-preset", "fast",            # Швидкість стиснення (чим швидше, тим більший файл)
-            "-crf", "23",                 # Якість (Constant Rate Factor, 23 - стандарт)
+            "-c:v", "libx264",            # Відеокодек H.264
+            "-preset", "fast",            # Швидкість стиснення
+            "-crf", "23",                 # Якість
             "-c:a", "aac",                # Аудіокодек AAC
             "-b:a", "128k",               # Бітрейт аудіо
             output_path
         ]
         await self._run_command(cmd)
         return output_path
+
+    async def transcode_to_hls(self, input_path: str, output_dir: str, resolution: str = "1920x1080") -> str:
+        """
+        Конвертує відео у формат HLS (створює плейлист .m3u8 та сегменти .ts)
+        """
+        # Обов'язково створюємо директорію для чанків, інакше FFmpeg впаде
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Визначаємо шляхи для плейлиста та патерн для шматочків відео
+        playlist_path = os.path.join(output_dir, "index.m3u8")
+        segment_pattern = os.path.join(output_dir, "segment_%03d.ts")
+
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i", input_path,
+            "-vf", f"scale={resolution}", # Масштабуємо (напр. 1280x720)
+            "-c:v", "libx264",            # Відеокодек H.264
+            "-preset", "fast",            # Швидкий пресет для оптимізації процесора
+            "-crf", "23",                 # Оптимальний баланс розмір/якість
+            "-c:a", "aac",                # Аудіо AAC (стандарт для HLS)
+            "-b:a", "128k",               # Бітрейт аудіо
+            "-f", "hls",                  # Формат - HTTP Live Streaming
+            "-hls_time", "10",            # Довжина одного чанка (10 секунд)
+            "-hls_playlist_type", "vod",  # Тип плейлиста VOD (Video On Demand)
+            "-hls_segment_filename", segment_pattern,
+            playlist_path                 # Шлях до головного файлу плейлиста
+        ]
+        
+        await self._run_command(cmd)
+        
+        # Повертаємо шлях саме до плейлиста, бо це головний файл для HLS
+        return playlist_path
+    
+    
