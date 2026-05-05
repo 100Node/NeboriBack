@@ -6,8 +6,6 @@ logger = logging.getLogger(__name__)
 
 class FFmpegService:
     async def _run_command(self, cmd: list[str]) -> None:
-        """Базовий метод для запуску консольних команд асинхронно"""
-        # Об'єднуємо команду в рядок для логів
         cmd_str = " ".join(cmd)
         logger.info(f"Running FFmpeg: {cmd_str}")
 
@@ -17,13 +15,17 @@ class FFmpegService:
             stderr=asyncio.subprocess.PIPE
         )
 
-        # Чекаємо завершення і читаємо потоки
-        stdout, stderr = await process.communicate()
-
-        if process.returncode != 0:
-            error_message = stderr.decode().strip()
-            logger.error(f"FFmpeg failed with code {process.returncode}: {error_message}")
-            raise RuntimeError(f"FFmpeg error: {error_message}")
+        try:
+            stdout, stderr = await process.communicate()
+            
+            if process.returncode != 0:
+                raise RuntimeError(f"FFmpeg error: {stderr.decode().strip()}")
+                
+        except asyncio.CancelledError:
+            logger.warning(f"Task canceled! Sending SIGTERM to FFmpeg (PID: {process.pid})")
+            process.terminate()
+            await process.wait()
+            raise
 
     async def extract_audio(self, input_path: str, output_path: str) -> str:
         """Витягує аудіо і зберігає у форматі MP3"""
