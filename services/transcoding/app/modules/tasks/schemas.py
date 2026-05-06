@@ -29,3 +29,10 @@ class VideoProcessedEvent(BaseModel):
     event_type: str = "video.processed"
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     payload: VideoProcessedPayload
+
+
+class VideoCanceledPayload(BaseModel):
+    video_id: uuid.UUID
+
+class VideoCanceledEvent(BaseModel):
+    payload: VideoCanceledPayload

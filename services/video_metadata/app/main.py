@@ -8,13 +8,14 @@ from app.modules.videos.router import router as videos_router
 
 broker = RabbitBroker(settings.RABBITMQ_URL)
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await broker.connect()
     print("RabbitMQ connected to Upload Service")
-    
+
     yield
-    
+
     await broker.stop()
 
 
@@ -22,7 +23,7 @@ docs_url = "/docs" if settings.ENVIRONMENT != Environment.PROD else None
 redoc_url = "/redoc" if settings.ENVIRONMENT != Environment.PROD else None
 
 app = FastAPI(
-    title="Nebori Upload Video Service API",
+    title="Nebori Metadata Service API",
     debug=settings.DEBUG,
     docs_url=docs_url,
     redoc_url=redoc_url,
@@ -39,6 +40,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(videos_router)
+
 
 @app.get("/health", tags=["Health"])
 async def health_check():

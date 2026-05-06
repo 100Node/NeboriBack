@@ -15,6 +15,8 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+    networks:
+      - nebori-network
 
   upload:
     build:
@@ -25,16 +27,18 @@ services:
       - .env.dev.root
       - .env.dev.upload
     ports:
-      - "8008:8000"  # Main port for API
+      - "8101:8000"  # Main port for API
     volumes:
       - ./services/upload:/app
     depends_on:
       db:
         condition: service_healthy
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     entrypoint: /app/scripts/entrypoint-dev.sh
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - nebori-network
 
   transcoding:
     build:
@@ -45,16 +49,40 @@ services:
       - .env.dev.root
       - .env.dev.transcoding
     ports:
-      - "8009:8000"  # Main port for API
+      - "8102:8000"  # Main port for API
     volumes:
       - ./services/transcoding:/app
     depends_on:
       db:
         condition: service_healthy
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     entrypoint: /app/scripts/entrypoint-dev.sh
     command: faststream run app.main:app --reload
+    networks:
+      - nebori-network
+
+  metadata:
+    build:
+      context: ./services/video_metadata
+      dockerfile: Dockerfile.dev
+    container_name: nebori-video_metadata-serv
+    env_file:
+      - .env.dev.root
+      - .env.dev.video_metadata
+    ports:
+      - "8103:8000"  # Main port for API
+    volumes:
+      - ./services/video_metadata:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: /app/scripts/entrypoint-dev.sh
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - nebori-network
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -69,6 +97,13 @@ services:
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - nebori-network
 
   minio:
     image: minio/minio:latest
@@ -82,6 +117,9 @@ services:
     volumes:
       - minio_data:/data
 
+networks:
+  nebori-network:
+    driver: bridge
 
 volumes:
   minio_data:
