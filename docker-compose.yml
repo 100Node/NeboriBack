@@ -17,6 +17,28 @@ services:
     ports:
       - "8002:8000"
 
+  user:
+    build: ./services/user
+    container_name: nebori_user
+    environment:
+      DJANGO_SECRET_KEY: change-this-in-production
+      DJANGO_DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: "*"
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: nebori_user
+      POSTGRES_USER: nebori
+      POSTGRES_PASSWORD: nebori
+    depends_on:
+      db:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    ports:
+      - "8003:8000"
+    volumes:
+      - user_media:/app/media
+
   db:
     image: postgres:16-alpine
     container_name: nebori_auth_db
@@ -31,6 +53,19 @@ services:
       retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  db-init:
+    image: postgres:16-alpine
+    container_name: nebori_db_init
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: nebori
+    command: >
+      sh -c "psql -h db -U nebori -d postgres -tAc \"SELECT 1 FROM pg_database WHERE datname='nebori_user'\" | grep -q 1 || createdb -h db -U nebori nebori_user"
+    restart: "no"
+
   pgadmin:
     image: dpage/pgadmin4
     container_name: nebori_pgadmin
@@ -58,3 +93,4 @@ services:
 volumes:
   postgres_data:
   minio_data: # Оголошуємо volume
+  user_media:

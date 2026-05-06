@@ -9,14 +9,74 @@ services:
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     restart: always
     ports:
-     - "5434:5432" 
+      - "5434:5432"
     healthcheck:
-      test: [ "CMD-SHELL", "sh -c 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}'" ]
+      test:
+        [
+          "CMD-SHELL",
+          "sh -c 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}'",
+        ]
       interval: 10s
       timeout: 3s
       retries: 3
     networks:
       - nebori-network
+
+  db-init:
+    image: postgres:16-alpine
+    container_name: nebori_db_init
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./infra/postgres/init-db.sh:/init-db.sh
+    command: sh /init-db.sh
+    restart: "no"
+
+  auth:
+    build: ./services/auth
+    container_name: nebori_auth
+    env_file:
+      - .env.dev.root
+      - .env.dev.auth
+    depends_on:
+      db:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_started
+    ports:
+      - "8002:8000"
+
+  user:
+    build: ./services/user
+    container_name: nebori_user
+    env_file:
+      - .env.dev.root
+      - .env.dev.user
+    depends_on:
+      db:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_started
+    ports:
+      - "8003:8000"
+    volumes:
+      - user_media:/app/media
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: nebori_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
 
   upload:
     build:
@@ -110,10 +170,10 @@ services:
     container_name: nebori-minio
     command: server /data --console-address ":9001"
     env_file:
-    - .env.dev.root
+      - .env.dev.root
     ports:
-      - "9000:9000"  # Main port for API
-      - "9001:9001"  # Admin port
+      - "9000:9000"
+      - "9001:9001"
     volumes:
       - minio_data:/data
 
@@ -125,3 +185,4 @@ volumes:
   minio_data:
   postgres_data:
   rabbitmq_data:
+  user_media:

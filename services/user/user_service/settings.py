@@ -4,7 +4,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-insecure-secret-key-change-me")
-DEBUG = os.getenv("DJANGO_DEBUG", "0") == "1"
+DEBUG = True
 
 allowed_hosts_raw = os.getenv("DJANGO_ALLOWED_HOSTS", "*")
 ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_raw.split(",") if host.strip()]
@@ -32,7 +32,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "auth_service.urls"
+ROOT_URLCONF = "user_service.urls"
 
 TEMPLATES = [
     {
@@ -49,14 +49,14 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "auth_service.wsgi.application"
-ASGI_APPLICATION = "auth_service.asgi.application"
+WSGI_APPLICATION = "user_service.wsgi.application"
+ASGI_APPLICATION = "user_service.asgi.application"
 
 if os.getenv("POSTGRES_HOST"):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("POSTGRES_DB", "nebori_auth"),
+            "NAME": os.getenv("POSTGRES_DB", "nebori_user"),
             "USER": os.getenv("POSTGRES_USER", "nebori"),
             "PASSWORD": os.getenv("POSTGRES_PASSWORD", "nebori"),
             "HOST": os.getenv("POSTGRES_HOST", "db"),
@@ -84,6 +84,8 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -91,10 +93,7 @@ from datetime import timedelta
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ),
-    "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.IsAuthenticated",
+        "accounts.authentication.AutoCreateJWTAuthentication",
     ),
 }
 
