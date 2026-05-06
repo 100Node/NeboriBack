@@ -7,6 +7,8 @@ from app.modules.videos.repository import IVideoRepository
 from app.modules.videos.enums import VideoStatusEnum
 from app.services.storage import S3Service
 
+from app.core.config import settings 
+
 logger = logging.getLogger(__name__)
 
 class VideoUploadService:
@@ -32,7 +34,7 @@ class VideoUploadService:
         s3_object_name = f"{user_id}/{video_id}/{uuid.uuid4()}.{file_extension}"
 
         try:
-            # 1. Репозиторій робить свою роботу (flush)
+            # 1. Репозиторій створює запис
             upload_record = await self.repo.create({
                 "video_id": video_id,
                 "user_id": user_id,
@@ -42,7 +44,7 @@ class VideoUploadService:
                 "status": VideoStatusEnum.PENDING
             })
 
-            # 2. S3 робить свою роботу
+            # 2. Завантажуємо в S3
             await self.s3_service.ensure_bucket_exists()
             await self.s3_service.upload_video(
                 file_obj=file.file,
@@ -50,11 +52,34 @@ class VideoUploadService:
                 content_type=content_type
             )
             
-            # 3. Репозиторій оновлює (flush)
+            # 3. Оновлюємо статус в БД
             await self.repo.update(upload_record, {"status": VideoStatusEnum.PROCESSING})
             
-            # 4. Сервіс викликає коміт
+            # 4. ЗБЕРІГАЄМО ТРАНЗАКЦІЮ
             await self.commit()
+            
+            # ----------------------------------------------------
+            # 5. НОВИЙ КРОК: ВІДПРАВЛЯЄМО ІВЕНТ У RABBITMQ
+            # ----------------------------------------------------
+            # Щоб уникнути помилки Circular Import (бо main імпортує роутери, 
+            # а роутери - сервіси), найкраще імпортувати брокер прямо тут:
+            from app.main import broker
+            
+            logger.info(f"Video {video_id} successfully saved. Publishing to RabbitMQ...")
+            
+            await broker.publish(
+                message={
+                    "payload": {
+                        "video_id": str(video_id),
+                        "user_id": str(user_id),
+                        "s3_bucket": settings.S3_BUCKET_NAME, # або просто "raw-videos"
+                        "s3_path": s3_object_name
+                    }
+                },
+                queue="video.upload.events"
+            )
+            # ----------------------------------------------------
+
             return upload_record
 
         except Exception as e:

@@ -42,15 +42,6 @@ class Settings(BaseSettings):
         )
 
     @property
-    def DATABASE_URL_SYNC(self) -> str:
-        # for Alembic migrations (sync engine)
-        return (
-            f"postgresql+psycopg2://"
-            f"{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
-            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
-        )
-
-    @property
     def RABBITMQ_URL(self) -> str:
         return f"amqp://{self.RABBITMQ_USER}:{self.RABBITMQ_PASS}@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}/"
 
