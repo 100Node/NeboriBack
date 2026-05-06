@@ -1,49 +1,23 @@
 services:
-  db:
-    image: postgres:16-alpine
-    container_name: nebori_db
-    env_file:
-      - .env.dev.root
-    volumes:
-      - postgres_data:/var/lib/postgresql/data/
-      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
-    restart: always
-    ports:
-      - "5434:5432"
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "sh -c 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}'",
-        ]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-    networks:
-      - nebori-network
-
-  db-init:
-    image: postgres:16-alpine
-    container_name: nebori_db_init
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - ./infra/postgres/init-db.sh:/init-db.sh
-    command: sh /init-db.sh
-    restart: "no"
-
   auth:
     build: ./services/auth
     container_name: nebori_auth
-    env_file:
-      - .env.dev.root
-      - .env.dev.auth
+    environment:
+      DJANGO_SECRET_KEY: dev-insecure-secret-key-change-me
+      DJANGO_DEBUG: "1"
+      DJANGO_ALLOWED_HOSTS: "*"
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: nebori_auth
+      POSTGRES_USER: nebori
+      POSTGRES_PASSWORD: nebori
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASS: guest
     depends_on:
       db:
         condition: service_healthy
-      db-init:
-        condition: service_completed_successfully
       rabbitmq:
         condition: service_started
     ports:
@@ -52,20 +26,44 @@ services:
   user:
     build: ./services/user
     container_name: nebori_user
-    env_file:
-      - .env.dev.root
-      - .env.dev.user
+    environment:
+      DJANGO_SECRET_KEY: dev-insecure-secret-key-change-me
+      DJANGO_DEBUG: "1"
+      DJANGO_ALLOWED_HOSTS: "*"
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: nebori_user
+      POSTGRES_USER: nebori
+      POSTGRES_PASSWORD: nebori
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASS: guest
     depends_on:
       db:
         condition: service_healthy
-      db-init:
-        condition: service_completed_successfully
       rabbitmq:
         condition: service_started
     ports:
       - "8003:8000"
     volumes:
       - user_media:/app/media
+
+  db:
+    image: postgres:16-alpine
+    container_name: nebori_auth_db
+    environment:
+      POSTGRES_MULTIPLE_DATABASES: nebori_auth,nebori_user
+      POSTGRES_USER: nebori
+      POSTGRES_PASSWORD: nebori
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nebori -d nebori_auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres:/docker-entrypoint-initdb.d
 
   pgadmin:
     image: dpage/pgadmin4
@@ -78,83 +76,15 @@ services:
     depends_on:
       - db
 
-  upload:
-    build:
-      context: ./services/upload
-      dockerfile: Dockerfile.dev
-    container_name: nebori-upload-serv
-    env_file:
-      - .env.dev.root
-      - .env.dev.upload
-    ports:
-      - "8101:8000"  # Main port for API
-    volumes:
-      - ./services/upload:/app
-    depends_on:
-      db:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: /app/scripts/entrypoint-dev.sh
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    networks:
-      - nebori-network
-
-  transcoding:
-    build:
-      context: ./services/transcoding
-      dockerfile: Dockerfile.dev
-    container_name: nebori-transcoding-serv
-    env_file:
-      - .env.dev.root
-      - .env.dev.transcoding
-    ports:
-      - "8102:8000"  # Main port for API
-    volumes:
-      - ./services/transcoding:/app
-    depends_on:
-      db:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: /app/scripts/entrypoint-dev.sh
-    command: faststream run app.main:app --reload
-    networks:
-      - nebori-network
-
-  metadata:
-    build:
-      context: ./services/video_metadata
-      dockerfile: Dockerfile.dev
-    container_name: nebori-video_metadata-serv
-    env_file:
-      - .env.dev.root
-      - .env.dev.video_metadata
-    ports:
-      - "8103:8000"  # Main port for API
-    volumes:
-      - ./services/video_metadata:/app
-    depends_on:
-      db:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    entrypoint: /app/scripts/entrypoint-dev.sh
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    networks:
-      - nebori-network
-
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: nebori-rabbitmq
-    env_file:
-      - .env.dev.root
-    ports:
-      - "${RABBITMQ_PORT}:5672"
-      - "${RABBITMQ_UI_PORT}:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -162,27 +92,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - nebori-network
 
   minio:
     image: minio/minio:latest
     container_name: nebori-minio
     command: server /data --console-address ":9001"
-    env_file:
-      - .env.dev.root
     ports:
       - "9000:9000"
       - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password123
     volumes:
       - minio_data:/data
 
-networks:
-  nebori-network:
-    driver: bridge
-
 volumes:
-  minio_data:
   postgres_data:
-  rabbitmq_data:
+  minio_data:
   user_media:
+  rabbitmq_data:
