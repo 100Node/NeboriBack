@@ -53,7 +53,6 @@ services:
     image: postgres:16-alpine
     container_name: nebori_auth_db
     environment:
-      POSTGRES_MULTIPLE_DATABASES: nebori_auth,nebori_user
       POSTGRES_USER: nebori
       POSTGRES_PASSWORD: nebori
     healthcheck:
@@ -64,6 +63,104 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/postgres:/docker-entrypoint-initdb.d
+
+  upload:
+    build:
+      context: ./services/upload
+      dockerfile: Dockerfile.dev
+    container_name: nebori-upload-serv
+    environment:
+      POSTGRES_DB: upload_tasks_db
+      POSTGRES_USER: nebori
+      POSTGRES_PASSWORD: nebori
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY: admin
+      S3_SECRET_KEY: password123
+      S3_BUCKET_NAME: raw-videos
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASS: guest
+      ENVIRONMENT: LOCAL
+      DEBUG: "1"
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      minio:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./services/upload:/app
+
+  video_metadata:
+    build:
+      context: ./services/video_metadata
+      dockerfile: Dockerfile.dev
+    container_name: nebori-video_metadata-serv
+    environment:
+      POSTGRES_DB: video_metadata_db
+      POSTGRES_USER: nebori
+      POSTGRES_PASSWORD: nebori
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY: admin
+      S3_SECRET_KEY: password123
+      S3_BUCKET_NAME: processed-videos
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASS: guest
+      ENVIRONMENT: LOCAL
+      DEBUG: "1"
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      minio:
+        condition: service_started
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./services/video_metadata:/app
+
+  transcoding:
+    build:
+      context: ./services/transcoding
+      dockerfile: Dockerfile.dev
+    container_name: nebori-transcoding-serv
+    environment:
+      POSTGRES_DB: transcoding_db
+      POSTGRES_USER: nebori
+      POSTGRES_PASSWORD: nebori
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY: admin
+      S3_SECRET_KEY: password123
+      S3_BUCKET_NAME: raw-videos
+      S3_PROCESSED_BUCKET_NAME: processed-videos
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASS: guest
+      ENVIRONMENT: LOCAL
+      DEBUG: "1"
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      minio:
+        condition: service_started
+    volumes:
+      - ./services/transcoding:/app
 
   pgadmin:
     image: dpage/pgadmin4
