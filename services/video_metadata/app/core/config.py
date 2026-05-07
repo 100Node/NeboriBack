@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     ENVIRONMENT: Environment = Environment.LOCAL
     DEBUG: bool = False
 
+    JWT_SECRET_KEY: str
+
+    JWT_ALGORITHM: str
+
     @property
     def DATABASE_URL_ASYNC(self) -> str:
         # for FastAPI runtime (async SQLAlchemy)

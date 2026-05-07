@@ -40,9 +40,6 @@ class VideoBase(BaseModel):
     description: str | None = None
     # category_id: int | None = None
 
-class VideoCreate(VideoBase):
-    user_id: uuid.UUID
-
 class VideoUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
