@@ -3,8 +3,12 @@ import logging
 from faststream.rabbit import RabbitBroker
 
 from app.modules.videos.repository import IVideoRepository
+<<<<<<< Updated upstream
 from app.modules.videos.models import Video
 from app.modules.videos.enums import VideoStatusEnum
+=======
+from app.modules.videos.models import Video, VideoStatusEnum
+>>>>>>> Stashed changes
 from app.modules.videos.schemas import VideoBase, VideoUpdate
 
 

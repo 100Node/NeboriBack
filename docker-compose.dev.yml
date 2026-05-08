@@ -59,6 +59,61 @@ services:
     networks:
       - nebori-network
 
+  notifications:
+    build: ./services/notifications
+    container_name: nebori_notifications
+    env_file:
+      - .env.dev.root
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+      DJANGO_DEBUG: ${DJANGO_DEBUG}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: nebori_notifications
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASS: ${RABBITMQ_PASS}
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    ports:
+      - "8106:8000"
+    networks:
+      - nebori-network
+
+  notifications_consumer:
+    build: ./services/notifications
+    container_name: nebori_notifications_consumer
+    command: python manage.py run_consumer
+    env_file:
+      - .env.dev.root
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+      DJANGO_DEBUG: ${DJANGO_DEBUG}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: nebori_notifications
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASS: ${RABBITMQ_PASS}
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    networks:
+      - nebori-network
+
   db:
     image: postgres:16-alpine
     container_name: nebori_db

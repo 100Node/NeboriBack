@@ -5,8 +5,12 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.repository import BaseRepository
+<<<<<<< Updated upstream
 from app.modules.videos.models import Video
 from app.modules.videos.enums import VideoStatusEnum
+=======
+from app.modules.videos.models import Video, VideoStatusEnum
+>>>>>>> Stashed changes
 
 
 class IVideoRepository(Protocol):

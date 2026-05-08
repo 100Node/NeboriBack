@@ -59,7 +59,10 @@ class VideoUpdate(BaseModel):
     description: str | None = None
     # category_id: int | None = None
     status: VideoStatusEnum | None = None
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 
 class VideoRead(VideoBase):
     id: uuid.UUID

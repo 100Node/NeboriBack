@@ -6,3 +6,4 @@ CREATE DATABASE video_metadata_db;
 CREATE DATABASE upload_tasks_db;
 CREATE DATABASE transcoding_db;
 CREATE DATABASE achievements_db;
+CREATE DATABASE nebori_notifications;
