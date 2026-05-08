@@ -3,7 +3,8 @@ import logging
 from faststream.rabbit import RabbitBroker
 
 from app.modules.videos.repository import IVideoRepository
-from app.modules.videos.models import Video, VideoStatus
+from app.modules.videos.models import Video
+from app.modules.videos.enums import VideoStatusEnum
 from app.modules.videos.schemas import VideoBase, VideoUpdate
 
 
@@ -17,7 +18,7 @@ class VideoMetadataService:
     async def create_video(self, data: VideoBase, user_id: int) -> Video:
         data_to_create = data.model_dump()
         data_to_create["user_id"] = user_id
-        
+
         return await self.repository.create(data_to_create)
 
     async def get_video(self, video_id: uuid.UUID) -> Video | None:
@@ -39,7 +40,7 @@ class VideoMetadataService:
             video_id=video_id,
             playlist_url=hls_url,
             duration=duration,
-            status=VideoStatus.PUBLISHED
+            status=VideoStatusEnum.PUBLISHED
         )
 
     async def fail_video(self, video_id: uuid.UUID, error_msg: str):
@@ -47,14 +48,14 @@ class VideoMetadataService:
             f"Service: Marking video {video_id} as failed. Reason: {error_msg}")
         await self.repository.update_fields(
             video_id=video_id,
-            status=VideoStatus.ERROR
+            status=VideoStatusEnum.ERROR
         )
 
     async def delete_video(self, video_id: uuid.UUID):
         logger.info(f"Service: Soft-deleting video {video_id}")
         await self.repository.update_fields(
             video_id=video_id,
-            status=VideoStatus.DELETED
+            status=VideoStatusEnum.DELETED
         )
 
     async def cancel_video(self, video_id: uuid.UUID, broker: RabbitBroker):
@@ -62,7 +63,7 @@ class VideoMetadataService:
 
         await self.repository.update_fields(
             video_id=video_id,
-            status=VideoStatus.CANCELED
+            status=VideoStatusEnum.CANCELED
         )
 
         await broker.publish(

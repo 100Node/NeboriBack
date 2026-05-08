@@ -5,7 +5,7 @@ from sqlalchemy import String, Text, Integer, ForeignKey, DateTime, Enum as SQLE
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.modules.videos.enums import CommentStatus, ReactionType, VideoStatus
+from app.modules.videos.enums import CommentStatus, ReactionType, VideoStatusEnum
 
 
 class Video(Base):
@@ -23,13 +23,13 @@ class Video(Base):
     duration: Mapped[int | None] = mapped_column(Integer, nullable=True)
     views_count: Mapped[int] = mapped_column(Integer, default=0)
 
-    status: Mapped[VideoStatus] = mapped_column(
+    status: Mapped[VideoStatusEnum] = mapped_column(
         SQLEnum(
-            VideoStatus,
+            VideoStatusEnum,
             native_enum=False,
             values_callable=lambda obj: [e.value for e in obj]
         ),
-        default=VideoStatus.UPLOADING,
+        default=VideoStatusEnum.UPLOADING,
         server_default=sqltext("'uploading'"),
         nullable=False,
         index=True

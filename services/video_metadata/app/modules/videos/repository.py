@@ -5,17 +5,22 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.repository import BaseRepository
-from app.modules.videos.models import Video, VideoStatus
+from app.modules.videos.models import Video
+from app.modules.videos.enums import VideoStatusEnum
 
 
 class IVideoRepository(Protocol):
     async def get(self, id: uuid.UUID) -> Video | None: ...
     async def create(self, obj_in: dict, flush: bool = True) -> Video: ...
-    async def update(self, db_obj: Video, obj_in: dict, flush: bool = True) -> Video: ...
-    
-    async def get_multi(self, limit: int = 100, offset: int = 0) -> Sequence[Video]: ...
-    
-    async def update_fields(self, video_id: uuid.UUID, **kwargs: Any) -> None: ...
+
+    async def update(self, db_obj: Video, obj_in: dict,
+                     flush: bool = True) -> Video: ...
+
+    async def get_multi(self, limit: int = 100,
+                        offset: int = 0) -> Sequence[Video]: ...
+
+    async def update_fields(self, video_id: uuid.UUID,
+                            **kwargs: Any) -> None: ...
 
 
 class VideoRepository(BaseRepository[Video]):
