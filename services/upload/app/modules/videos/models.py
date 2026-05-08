@@ -13,7 +13,7 @@ class VideoUpload(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     video_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False) # video_id from metadata_service
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)
+    user_id: Mapped[int] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)
     title: Mapped[str] = mapped_column(String(255))
     filename: Mapped[str] = mapped_column(String(255))
     s3_path: Mapped[str] = mapped_column(String(512))

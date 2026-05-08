@@ -12,7 +12,7 @@ class Video(Base):
     __tablename__ = "videos"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    user_id: Mapped[int] = mapped_column(index=True)
 
     title: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)

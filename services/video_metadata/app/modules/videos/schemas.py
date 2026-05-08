@@ -48,7 +48,7 @@ class VideoUpdate(BaseModel):
 
 class VideoRead(VideoBase):
     id: uuid.UUID
-    user_id: uuid.UUID
+    user_id: int
     status: VideoStatus
     playlist_url: str | None
     thumbnail_url: str | None
