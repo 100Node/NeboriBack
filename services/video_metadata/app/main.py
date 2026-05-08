@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -5,17 +6,24 @@ from faststream.rabbit import RabbitBroker
 
 from app.core.config import settings, Environment
 from app.modules.videos.router import router as videos_router
+from app.modules.videos.consumers import router as consumers_router
+
+logger = logging.getLogger(__name__)
 
 broker = RabbitBroker(settings.RABBITMQ_URL)
+broker.include_router(consumers_router)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await broker.connect()
-    print("RabbitMQ connected to Upload Service")
-
+    try:
+        await broker.start()
+        logger.info("RabbitMQ connected to Metadata Service")
+        print("RabbitMQ connected to Metadata Service")
+    except Exception as e:
+        logger.error(f"Failed to connect to RabbitMQ: {e}")
+        raise
     yield
-
     await broker.stop()
 
 
@@ -46,5 +54,5 @@ app.include_router(videos_router)
 async def health_check():
     return {
         "status": "ok",
-        "service": "upload_video"
+        "service": "video_metadata"
     }

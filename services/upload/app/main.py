@@ -5,16 +5,17 @@ from faststream.rabbit import RabbitBroker
 
 from app.core.config import settings, Environment
 from app.modules.videos.router import router as videos_router
+from app.modules.videos.consumers import router as consumers_router
 
 broker = RabbitBroker(settings.RABBITMQ_URL)
+broker.include_router(consumers_router)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await broker.connect()
+    await broker.start()
     print("RabbitMQ connected to Upload Service")
-    
     yield
-    
     await broker.stop()
 
 
@@ -28,7 +29,7 @@ app = FastAPI(
     redoc_url=redoc_url,
     version="0.1.0",
     openapi_url="/openapi.json" if settings.ENVIRONMENT != Environment.PROD else None,
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -40,9 +41,7 @@ app.add_middleware(
 )
 app.include_router(videos_router)
 
+
 @app.get("/health", tags=["Health"])
 async def health_check():
-    return {
-        "status": "ok",
-        "service": "upload_video"
-    }
+    return {"status": "ok", "service": "upload_video"}

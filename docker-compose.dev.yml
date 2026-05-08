@@ -91,7 +91,7 @@ services:
       - .env.dev.root
       - .env.dev.upload
     ports:
-      - "8101:8000" # Main port for API
+      - "8101:8000"
     volumes:
       - ./services/upload:/app
     depends_on:
@@ -100,7 +100,8 @@ services:
       rabbitmq:
         condition: service_healthy
     entrypoint: /app/scripts/entrypoint-dev.sh
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # БЕЗ --reload щоб lifespan (broker.start) відпрацьовував стабільно
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     networks:
       - nebori-network
 
@@ -113,7 +114,7 @@ services:
       - .env.dev.root
       - .env.dev.transcoding
     ports:
-      - "8102:8000" # Main port for API
+      - "8102:8000"
     volumes:
       - ./services/transcoding:/app
     depends_on:
@@ -135,7 +136,7 @@ services:
       - .env.dev.root
       - .env.dev.video_metadata
     ports:
-      - "8103:8000" # Main port for API
+      - "8103:8000"
     volumes:
       - ./services/video_metadata:/app
     depends_on:
@@ -144,9 +145,11 @@ services:
       rabbitmq:
         condition: service_healthy
     entrypoint: /app/scripts/entrypoint-dev.sh
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # БЕЗ --reload щоб lifespan (broker.start) відпрацьовував стабільно
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     networks:
       - nebori-network
+
   pgadmin:
     image: dpage/pgadmin4
     container_name: nebori_pgadmin
@@ -185,16 +188,16 @@ services:
     image: minio/minio:latest
     container_name: nebori-minio
     command: server /data --console-address ":9001"
+    env_file:
+    - .env.dev.root
     ports:
       - "9000:9000"
       - "9001:9001"
-    environment:
-      MINIO_ROOT_USER: admin
-      MINIO_ROOT_PASSWORD: password123
     volumes:
       - minio_data:/data
     networks:
       - nebori-network
+
 
 networks:
   nebori-network:

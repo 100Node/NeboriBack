@@ -32,20 +32,14 @@ class Settings(BaseSettings):
     ENVIRONMENT: Environment = Environment.LOCAL
     DEBUG: bool = False
 
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str
+
     @property
     def DATABASE_URL_ASYNC(self) -> str:
         # for FastAPI runtime (async SQLAlchemy)
         return (
             f"postgresql+asyncpg://"
-            f"{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
-            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
-        )
-
-    @property
-    def DATABASE_URL_SYNC(self) -> str:
-        # for Alembic migrations (sync engine)
-        return (
-            f"postgresql+psycopg2://"
             f"{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
