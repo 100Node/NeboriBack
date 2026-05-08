@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-class VideoStatus(StrEnum):
+class VideoStatusEnum(StrEnum):
     UPLOADING = "uploading"
     PROCESSING = "processing"
     PUBLISHED = "published"
