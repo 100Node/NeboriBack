@@ -2,19 +2,22 @@ services:
   auth:
     build: ./services/auth
     container_name: nebori_auth
+    env_file:
+      - .env.dev.root
+      - .env.dev.auth
     environment:
-      DJANGO_SECRET_KEY: dev-insecure-secret-key-change-me
-      DJANGO_DEBUG: "1"
-      DJANGO_ALLOWED_HOSTS: "*"
-      POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: nebori_auth
-      POSTGRES_USER: nebori
-      POSTGRES_PASSWORD: nebori
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: guest
-      RABBITMQ_PASS: guest
+      SECRET_KEY: ${SECRET_KEY}
+      DJANGO_DEBUG: ${DJANGO_DEBUG}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASS: ${RABBITMQ_PASS}
     depends_on:
       db:
         condition: service_healthy
@@ -22,23 +25,28 @@ services:
         condition: service_started
     ports:
       - "8002:8000"
+    networks:
+      - nebori-network
 
   user:
     build: ./services/user
     container_name: nebori_user
+    env_file:
+      - .env.dev.root
+      - .env.dev.user
     environment:
-      DJANGO_SECRET_KEY: dev-insecure-secret-key-change-me
-      DJANGO_DEBUG: "1"
-      DJANGO_ALLOWED_HOSTS: "*"
-      POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: nebori_user
-      POSTGRES_USER: nebori
-      POSTGRES_PASSWORD: nebori
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: guest
-      RABBITMQ_PASS: guest
+      SECRET_KEY: ${SECRET_KEY}
+      DJANGO_DEBUG: ${DJANGO_DEBUG}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASS: ${RABBITMQ_PASS}
     depends_on:
       db:
         condition: service_healthy
@@ -48,120 +56,97 @@ services:
       - "8003:8000"
     volumes:
       - user_media:/app/media
+    networks:
+      - nebori-network
 
   db:
     image: postgres:16-alpine
-    container_name: nebori_auth_db
-    environment:
-      POSTGRES_USER: nebori
-      POSTGRES_PASSWORD: nebori
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nebori -d nebori_auth"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    container_name: nebori_db
+    env_file:
+      - .env.dev.root
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./infra/postgres:/docker-entrypoint-initdb.d
+      - postgres_data:/var/lib/postgresql/data/
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: always
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "sh -c 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}'",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - nebori-network
 
   upload:
     build:
       context: ./services/upload
       dockerfile: Dockerfile.dev
     container_name: nebori-upload-serv
-    environment:
-      POSTGRES_DB: upload_tasks_db
-      POSTGRES_USER: nebori
-      POSTGRES_PASSWORD: nebori
-      POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
-      S3_ENDPOINT_URL: http://minio:9000
-      S3_ACCESS_KEY: admin
-      S3_SECRET_KEY: password123
-      S3_BUCKET_NAME: raw-videos
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: guest
-      RABBITMQ_PASS: guest
-      ENVIRONMENT: LOCAL
-      DEBUG: "1"
-    depends_on:
-      db:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_started
-      minio:
-        condition: service_started
+    env_file:
+      - .env.dev.root
+      - .env.dev.upload
     ports:
-      - "8000:8000"
+      - "8101:8000" # Main port for API
     volumes:
       - ./services/upload:/app
-
-  video_metadata:
-    build:
-      context: ./services/video_metadata
-      dockerfile: Dockerfile.dev
-    container_name: nebori-video_metadata-serv
-    environment:
-      POSTGRES_DB: video_metadata_db
-      POSTGRES_USER: nebori
-      POSTGRES_PASSWORD: nebori
-      POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
-      S3_ENDPOINT_URL: http://minio:9000
-      S3_ACCESS_KEY: admin
-      S3_SECRET_KEY: password123
-      S3_BUCKET_NAME: processed-videos
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: guest
-      RABBITMQ_PASS: guest
-      ENVIRONMENT: LOCAL
-      DEBUG: "1"
     depends_on:
       db:
         condition: service_healthy
       rabbitmq:
-        condition: service_started
-      minio:
-        condition: service_started
-    ports:
-      - "8001:8000"
-    volumes:
-      - ./services/video_metadata:/app
+        condition: service_healthy
+    entrypoint: /app/scripts/entrypoint-dev.sh
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - nebori-network
 
   transcoding:
     build:
       context: ./services/transcoding
       dockerfile: Dockerfile.dev
     container_name: nebori-transcoding-serv
-    environment:
-      POSTGRES_DB: transcoding_db
-      POSTGRES_USER: nebori
-      POSTGRES_PASSWORD: nebori
-      POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
-      S3_ENDPOINT_URL: http://minio:9000
-      S3_ACCESS_KEY: admin
-      S3_SECRET_KEY: password123
-      S3_BUCKET_NAME: raw-videos
-      S3_PROCESSED_BUCKET_NAME: processed-videos
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: guest
-      RABBITMQ_PASS: guest
-      ENVIRONMENT: LOCAL
-      DEBUG: "1"
+    env_file:
+      - .env.dev.root
+      - .env.dev.transcoding
+    ports:
+      - "8102:8000" # Main port for API
+    volumes:
+      - ./services/transcoding:/app
     depends_on:
       db:
         condition: service_healthy
       rabbitmq:
-        condition: service_started
-      minio:
-        condition: service_started
-    volumes:
-      - ./services/transcoding:/app
+        condition: service_healthy
+    entrypoint: /app/scripts/entrypoint-dev.sh
+    command: faststream run app.main:app --reload
+    networks:
+      - nebori-network
 
+  metadata:
+    build:
+      context: ./services/video_metadata
+      dockerfile: Dockerfile.dev
+    container_name: nebori-video_metadata-serv
+    env_file:
+      - .env.dev.root
+      - .env.dev.video_metadata
+    ports:
+      - "8103:8000" # Main port for API
+    volumes:
+      - ./services/video_metadata:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: /app/scripts/entrypoint-dev.sh
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - nebori-network
   pgadmin:
     image: dpage/pgadmin4
     container_name: nebori_pgadmin
@@ -172,16 +157,20 @@ services:
       - "5050:80"
     depends_on:
       - db
+    networks:
+      - nebori-network
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: nebori-rabbitmq
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+    env_file:
+      - .env.dev.root
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "${RABBITMQ_PORT}:5672"
+      - "${RABBITMQ_UI_PORT}:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -189,6 +178,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - nebori-network
 
   minio:
     image: minio/minio:latest
@@ -202,6 +193,12 @@ services:
       MINIO_ROOT_PASSWORD: password123
     volumes:
       - minio_data:/data
+    networks:
+      - nebori-network
+
+networks:
+  nebori-network:
+    driver: bridge
 
 volumes:
   postgres_data:
