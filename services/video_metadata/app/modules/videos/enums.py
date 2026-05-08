@@ -2,9 +2,10 @@ from enum import StrEnum
 
 
 class VideoStatusEnum(StrEnum):
-    UPLOADING = "uploading"
-    PROCESSING = "processing"
-    PUBLISHED = "published"
+    QUEUED = "queued"          # запис створено, очікує завантаження
+    UPLOADING = "uploading"    # файл завантажується в S3
+    TRANSCODING = "transcoding"  # транскодинг в процесі
+    PUBLISHED = "published"    # готово, доступно для перегляду
     BLOCKED = "blocked"
     DELETED = "deleted"
     ERROR = "error"

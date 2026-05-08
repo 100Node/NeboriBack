@@ -8,6 +8,20 @@ from app.db.base import Base
 from app.modules.videos.enums import CommentStatus, ReactionType, VideoStatusEnum
 
 
+class VideoHlsUrl(Base):
+    __tablename__ = "video_hls_urls"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    video_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("videos.id", ondelete="CASCADE"), index=True
+    )
+    resolution: Mapped[str] = mapped_column(String(50))
+    url: Mapped[str] = mapped_column(String)
+
+    # Зв'язок назад до відео
+    video: Mapped["Video"] = relationship(back_populates="hls_urls")
+
+
 class Video(Base):
     __tablename__ = "videos"
 
@@ -18,7 +32,6 @@ class Video(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     thumbnail_url: Mapped[str | None] = mapped_column(String, nullable=True)
-    playlist_url: Mapped[str | None] = mapped_column(String, nullable=True)
 
     duration: Mapped[int | None] = mapped_column(Integer, nullable=True)
     views_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -38,6 +51,8 @@ class Video(Base):
         timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
     # relations
+    hls_urls: Mapped[list["VideoHlsUrl"]] = relationship(
+        back_populates="video", cascade="all, delete-orphan")
     comments: Mapped[list["Comment"]] = relationship(
         back_populates="video", cascade="all, delete-orphan")
     reactions: Mapped[list["VideoReaction"]] = relationship(

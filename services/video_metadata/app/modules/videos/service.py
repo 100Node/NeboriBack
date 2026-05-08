@@ -1,12 +1,10 @@
 import uuid
 import logging
-from faststream.rabbit import RabbitBroker
 
 from app.modules.videos.repository import IVideoRepository
 from app.modules.videos.models import Video
 from app.modules.videos.enums import VideoStatusEnum
-from app.modules.videos.schemas import VideoBase, VideoUpdate
-
+from app.modules.videos.schemas import VideoBase, VideoUpdate, StreamItem
 
 logger = logging.getLogger(__name__)
 
@@ -18,58 +16,67 @@ class VideoMetadataService:
     async def create_video(self, data: VideoBase, user_id: int) -> Video:
         data_to_create = data.model_dump()
         data_to_create["user_id"] = user_id
+        data_to_create["status"] = VideoStatusEnum.QUEUED  # ← дефолт
 
-        return await self.repository.create(data_to_create)
+        video = await self.repository.create(data_to_create, commit=True)
+        fresh_video = await self.repository.get(video.id)
+        if fresh_video is None:
+            raise ValueError("Failed to retrieve created video metadata")
+        return fresh_video
+
+    async def set_status_uploading(self, video_id: uuid.UUID) -> None:
+        video = await self.repository.get(video_id)
+        if video:
+            await self.repository.update(video, {"status": VideoStatusEnum.UPLOADING}, commit=True)
+            logger.info(f"Video {video_id} → UPLOADING")
+
+    async def set_status_transcoding(self, video_id: uuid.UUID) -> None:
+        video = await self.repository.get(video_id)
+        if video:
+            await self.repository.update(video, {"status": VideoStatusEnum.TRANSCODING}, commit=True)
+            logger.info(f"Video {video_id} → TRANSCODING")
+
+    async def publish_video(self, video_id: uuid.UUID, streams: list[StreamItem], duration: int | None):
+        video = await self.repository.get(video_id)
+        if not video:
+            logger.error(f"Video {video_id} not found")
+            return
+
+        await self.repository.update(video, {
+            "status": VideoStatusEnum.PUBLISHED,
+            "duration": duration,
+        }, commit=False)
+        await self.repository.add_hls_urls(video_id, streams)
+        await self.repository.commit()
+        logger.info(f"Video {video_id} → PUBLISHED")
+
+    async def update_metadata(self, video_id: uuid.UUID, data: VideoUpdate) -> Video:
+        video = await self.repository.get(video_id)
+        if not video:
+            raise ValueError(f"Video {video_id} not found")
+
+        update_data = data.model_dump(exclude_unset=True)
+        await self.repository.update(video, update_data, commit=True)
+
+        fresh_video = await self.repository.get(video_id)
+        if fresh_video is None:
+            raise ValueError("Failed to retrieve updated video metadata")
+        return fresh_video
 
     async def get_video(self, video_id: uuid.UUID) -> Video | None:
         return await self.repository.get(video_id)
 
-    async def update_metadata(self, video_id: uuid.UUID, data: VideoUpdate) -> Video:
-        db_obj = await self.repository.get(video_id)
-        if not db_obj:
-            raise ValueError("Video not found")
-
-        return await self.repository.update(
-            db_obj=db_obj,
-            obj_in=data.model_dump(exclude_unset=True)
-        )
-
-    async def publish_video(self, video_id: uuid.UUID, hls_url: str, duration: int | None):
-        logger.info(f"Service: Publishing video {video_id}")
-        await self.repository.update_fields(
-            video_id=video_id,
-            playlist_url=hls_url,
-            duration=duration,
-            status=VideoStatusEnum.PUBLISHED
-        )
-
-    async def fail_video(self, video_id: uuid.UUID, error_msg: str):
-        logger.warning(
-            f"Service: Marking video {video_id} as failed. Reason: {error_msg}")
-        await self.repository.update_fields(
-            video_id=video_id,
-            status=VideoStatusEnum.ERROR
-        )
-
-    async def delete_video(self, video_id: uuid.UUID):
-        logger.info(f"Service: Soft-deleting video {video_id}")
-        await self.repository.update_fields(
-            video_id=video_id,
-            status=VideoStatusEnum.DELETED
-        )
-
-    async def cancel_video(self, video_id: uuid.UUID, broker: RabbitBroker):
-        logger.info(f"Canceling video {video_id}")
-
-        await self.repository.update_fields(
-            video_id=video_id,
-            status=VideoStatusEnum.CANCELED
-        )
-
-        await broker.publish(
-            message={"payload": {"video_id": str(video_id)}},
-            queue="video.canceled.events"
-        )
-
     async def list_videos(self, limit: int = 20, offset: int = 0):
         return await self.repository.get_multi(limit=limit, offset=offset)
+
+    async def fail_video(self, video_id: uuid.UUID, error_msg: str):
+        video = await self.repository.get(video_id)
+        if video:
+            await self.repository.update(video, {"status": VideoStatusEnum.ERROR}, commit=True)
+            logger.info(f"Video {video_id} → ERROR: {error_msg}")
+
+    async def delete_video(self, video_id: uuid.UUID):
+        video = await self.repository.get(video_id)
+        if video:
+            await self.repository.delete(video, commit=True)
+            logger.info(f"Video {video_id} deleted")
