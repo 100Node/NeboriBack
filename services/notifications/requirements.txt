@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+httpx
+python-consul2
+faststream[rabbit]
+aioboto3
+python-jose[cryptography]
+cryptography
+sqlalchemy
+asyncpg
