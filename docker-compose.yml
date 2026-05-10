@@ -99,4 +99,3 @@ volumes:
   postgres_data:
   minio_data: # Оголошуємо volume
   user_media:
-  user_media:
