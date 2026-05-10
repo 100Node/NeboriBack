@@ -1,0 +1,42 @@
+services:
+  auth-service:
+    build: ./auth-service
+    env_file:
+      - .env.root
+      - .env.auth
+    environment:
+      - ENVIRONMENT=production
+
+  upload-service:
+    build:
+      context: ./services/upload
+      dockerfile: Dockerfile
+    container_name: nebori-upload-serv
+    env_file:
+      - .env.root
+      - .env.upload
+    ports:
+      - "8000:8000"  # Main port for API
+    volumes:
+      - ./services/upload:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: /app/scripts/entrypoint.sh
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload 
+
+
+  minio:
+    image: minio/minio:latest
+    container_name: nebori_minio
+    command: server /data --console-address ":9001"
+    env_file:
+      - .env.root
+    ports:
+      - "9000:9000"  # Main port for API
+      - "9001:9001"  # Admin port
+    volumes:
+      - minio_data:/data
+
+volumes:
+  minio_data:

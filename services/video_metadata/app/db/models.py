@@ -1,0 +1,1 @@
+from app.modules.videos import models as videos_models  # noqa

@@ -59,7 +59,7 @@ services:
     image: postgres:16-alpine
     container_name: nebori_auth_db
     environment:
-      POSTGRES_DB: nebori_auth
+      POSTGRES_MULTIPLE_DATABASES: nebori_auth,nebori_user
       POSTGRES_USER: nebori
       POSTGRES_PASSWORD: nebori
     healthcheck:
@@ -69,6 +69,8 @@ services:
       retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres:/docker-entrypoint-initdb.d
+
   pgadmin:
     image: dpage/pgadmin4
     container_name: nebori_pgadmin
@@ -96,4 +98,5 @@ services:
 volumes:
   postgres_data:
   minio_data: # Оголошуємо volume
+  user_media:
   user_media:
