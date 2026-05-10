@@ -37,6 +37,24 @@ services:
     volumes:
       - user_media:/app/media
 
+  achievement:
+    build: ./services/achievement
+    container_name: nebori_achievement
+    environment:
+      DJANGO_SECRET_KEY: change-this-in-production
+      DJANGO_DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: "*"
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: nebori_achievement
+      POSTGRES_USER: nebori
+      POSTGRES_PASSWORD: nebori
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8004:8000"
+
   db:
     image: postgres:16-alpine
     container_name: nebori_auth_db
