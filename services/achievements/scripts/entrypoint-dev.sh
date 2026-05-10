@@ -5,7 +5,8 @@ set -e
 case "$1" in
   uvicorn)
     echo "Running migrations..."
-    alembic upgrade head
+    # Don't exit if alembic fails (e.g. no versions yet)
+    alembic upgrade head || echo "Alembic upgrade failed or no migrations found."
     ;;
 
   *)
