@@ -216,6 +216,16 @@ services:
     networks:
       - nebori-network
 
+
+  consul:
+    image: hashicorp/consul:latest
+    container_name: nebori-consul
+    command: agent -server -bootstrap-expect=1 -ui -client=0.0.0.0
+    ports:
+      - "8500:8500"
+    networks:
+      - nebori-network
+
 networks:
   nebori-network:
     driver: bridge

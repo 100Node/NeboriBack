@@ -1,4 +1,7 @@
+import os
+import uuid
 import logging
+import consul
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,22 +13,43 @@ from app.modules.videos.consumers import router as consumers_router
 
 logger = logging.getLogger(__name__)
 
+# --- Налаштування Consul ---
+CONSUL_HOST = os.getenv("CONSUL_HOST", "nebori-consul")
+SERVICE_NAME = "metadata-service"
+SERVICE_ID = f"{SERVICE_NAME}-{uuid.uuid4().hex[:8]}"
+SERVICE_ADDRESS = os.getenv("HOSTNAME", "nebori-video_metadata-serv")
+SERVICE_PORT = 8000
+
+c = consul.Consul(host=CONSUL_HOST, port=8500)
+# --------------------------
+
 broker = RabbitBroker(settings.RABBITMQ_URL)
 broker.include_router(consumers_router)
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
         await broker.start()
         logger.info("RabbitMQ connected to Metadata Service")
-        print("RabbitMQ connected to Metadata Service")
+        
+        # Реєстрація в Consul
+        logger.info(f"Registering in Consul as {SERVICE_ID}...")
+        c.agent.service.register(
+            name=SERVICE_NAME,
+            service_id=SERVICE_ID,
+            address=SERVICE_ADDRESS,
+            port=SERVICE_PORT
+        )
     except Exception as e:
-        logger.error(f"Failed to connect to RabbitMQ: {e}")
+        logger.error(f"Failed to start services: {e}")
         raise
+        
     yield
+    
+    # Дереєстрація з Consul при вимкненні
+    logger.info("Deregistering from Consul...")
+    c.agent.service.deregister(SERVICE_ID)
     await broker.stop()
-
 
 docs_url = "/docs" if settings.ENVIRONMENT != Environment.PROD else None
 redoc_url = "/redoc" if settings.ENVIRONMENT != Environment.PROD else None
@@ -49,10 +73,10 @@ app.add_middleware(
 )
 app.include_router(videos_router)
 
-
 @app.get("/health", tags=["Health"])
 async def health_check():
     return {
         "status": "ok",
-        "service": "video_metadata"
+        "service": "video_metadata",
+        "consul_id": SERVICE_ID
     }
