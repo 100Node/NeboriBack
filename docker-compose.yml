@@ -37,8 +37,8 @@ services:
     volumes:
       - user_media:/app/media
 
-  achievement:
-    build: ./services/achievement
+  achievements:
+    build: ./services/achievements
     container_name: nebori_achievement
     environment:
       DJANGO_SECRET_KEY: change-this-in-production
